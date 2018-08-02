@@ -1,6 +1,6 @@
 # Workflow to compare NEB to Tag-Seq
 
-configfile: "config.yaml"
+configfile: "config.yml"
 
 import csv
 with open(config["neb_barcodes_file"]) as tsvfile:
@@ -16,7 +16,7 @@ with open(config["tagseq_barcodes_file"]) as tsvfile:
 all_samples = neb_samples + tagseq_samples
 
 rule all:
-    input: expand(config["output_dir"] + "/{sample}-read-{read}.fastq.gz", sample=all_samples, read=["1","2","3"])
+    input: expand(config["umi_labeled_dir"] + "/{sample}.fastq.gz", sample=all_samples)
 
 
 rule demultiplex_tag:
@@ -24,14 +24,14 @@ rule demultiplex_tag:
            read2=config["read2"],
            read3=config["read3"],
            barcodes=config["tagseq_barcodes_file"]
-    output: temp(expand(config["output_dir"] + "/fastq_tag/{sample}-read-{read}.fastq", sample=tagseq_samples, read=["1","2","3"])),
-            temp(expand(config["output_dir"] + "/fastq_tag/unmatched-read-{read}.fastq", read=["1","2","3"])),
-            expand(config["output_dir"] + "/fastq_tag/multimatched-read-{read}.fastq", read=["1", "2","3"])
-    log: config["output_dir"] + "/fastq_tag/barcode_splitter.log"
+    output: temp(expand(config["demultiplexed_dir"] + "/fastq_tag/{sample}-read-{read}.fastq", sample=tagseq_samples, read=["1","2","3"])),
+            temp(expand(config["demultiplexed_dir"] + "/fastq_tag/unmatched-read-{read}.fastq", read=["1","2","3"])),
+            expand(config["demultiplexed_dir"] + "/fastq_tag/multimatched-read-{read}.fastq", read=["1", "2","3"])
+    log: config["demultiplexed_dir"] + "/fastq_tag/barcode_splitter.log"
     shell: 'barcode_splitter \
             --split_all \
             --bcfile "{input.barcodes}" \
-            --mismatches 1 --prefix "{config[output_dir]}/fastq_tag/" \
+            --mismatches 1 --prefix "{config[demultiplexed_dir]}/fastq_tag/" \
             {input.read1:q} \
             {input.read2:q} \
             {input.read3:q} \
@@ -39,32 +39,50 @@ rule demultiplex_tag:
 
 
 rule move_tag_fastq:
-    input: config["output_dir"] + "/fastq_tag/{file}.fastq"
-    output: config["output_dir"] + "/{file}.fastq.gz"
-    shell: 'pigz -p {threads} -c {input:q} >{output:q}'
+    input: config["demultiplexed_dir"] + "/fastq_tag/{file}.fastq"
+    output: temp(config["demultiplexed_dir"] + "/{file}.fq")
+    shell: 'mv {input:q} {output:q}'
 
 rule demultiplex_neb:
     input:
-        read1=config["output_dir"] + "/fastq_tag/unmatched-read-1.fastq",
-        read2=config["output_dir"] + "/fastq_tag/unmatched-read-2.fastq",
-        read3=config["output_dir"] + "/fastq_tag/unmatched-read-3.fastq",
+        read1=config["demultiplexed_dir"] + "/fastq_tag/unmatched-read-1.fastq",
+        read2=config["demultiplexed_dir"] + "/fastq_tag/unmatched-read-2.fastq",
+        read3=config["demultiplexed_dir"] + "/fastq_tag/unmatched-read-3.fastq",
         barcodes=config["neb_barcodes_file"]
     output:
-        temp(expand(config["output_dir"] + "/fastq_neb/{sample}-read-{read}.fastq", sample=neb_samples, read=["1", "2", "3"])),
-        expand(config["output_dir"] + "/fastq_neb/unmatched-read-{read}.fastq", read=["1", "2","3"]),
-        expand(config["output_dir"] + "/fastq_neb/multimatched-read-{read}.fastq", read=["1", "2","3"])
+        temp(expand(config["demultiplexed_dir"] + "/fastq_neb/{sample}-read-{read}.fastq", sample=neb_samples, read=["1", "2", "3"])),
+        expand(config["demultiplexed_dir"] + "/fastq_neb/unmatched-read-{read}.fastq", read=["1", "2","3"]),
+        expand(config["demultiplexed_dir"] + "/fastq_neb/multimatched-read-{read}.fastq", read=["1", "2","3"])
     log:
-        config["output_dir"] + "/fastq_neb/barcode_splitter.log"
+        config["demultiplexed_dir"] + "/fastq_neb/barcode_splitter.log"
     shell: 'barcode_splitter \
             --split_all \
             --bcfile "{input.barcodes}" \
-            --mismatches 1 --prefix "{config[output_dir]}/fastq_neb/" \
+            --mismatches 1 --prefix "{config[demultiplexed_dir]}/fastq_neb/" \
             {input.read1:q} \
             {input.read2:q} \
             {input.read3:q} \
             --idxread 2 &> {log:q}'
 
 rule move_neb_fastq:
-    input: config["output_dir"] + "/fastq_neb/{file}.fastq"
-    output: config["output_dir"] + "/{file}.fastq.gz"
-    shell: 'pigz -p {threads} -c {input:q} >{output:q}'
+    input: config["demultiplexed_dir"] + "/fastq_neb/{file}.fastq"
+    output: temp(config["demultiplexed_dir"] + "/{file}.fq")
+    shell: 'mv {input:q} {output:q}'
+
+
+rule extract_umi:
+    input:
+        read1=config["demultiplexed_dir"] + "/{sample}-read-1.fq",
+        read3=config["demultiplexed_dir"] + "/{sample}-read-3.fq"
+    output:
+        config["umi_labeled_dir"] + "/{sample}.fastq.gz"
+    log:
+        config["umi_labeled_dir"] + "/logs/{sample}_umi_tools_extract.log"
+    shell:
+        "umi_tools extract "
+        "-I {input.read3:q} "
+        "--read2-in {input.read1:q} "
+        "--bc-pattern 'XXXXXXXXNNNNNNNN' "
+        "--read2-stdout "
+        "--log {log:q} "
+        "| pigz > {output:q}"

@@ -1,6 +1,6 @@
-neb_bd_1	agtcaa
-neb_bd_2	agttcc
-neb_bd_3	atgtca
-neb_adp_1	ccgtcc
-neb_adp_2	gtccgc
-neb_adp_3	gtgaaa
+neb_bd_1	AGTCAA
+neb_bd_2	AGTTCC
+neb_bd_3	ATGTCA
+neb_adp_1	CCGTCC
+neb_adp_2	GTCCGC
+neb_adp_3	GTGAAA
