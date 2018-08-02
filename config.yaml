@@ -1,0 +1,6 @@
+read1: "data/read1.fastq.gz"
+read2: "data/read2_i7.fastq.gz"
+read3: "data/read3_i5.fastq.gz"
+neb_barcodes_file: "barcodes/neb_barcodes.txt"
+tagseq_barcodes_file: "barcodes/tagseq_barcodes.txt"
+output_dir: "data/test_data/demultiplexed"

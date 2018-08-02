@@ -1,0 +1,11 @@
+---
+name: "TN5 Demultiplex"
+description: "Demultiplex TN5 data"
+contact: "pallares@princeton.edu"
+pi: "Julian Ayroles"
+lsi_staff: "Lance Parsons <lparsons@princeton.edu>"
+start_date: "2018-08-02"
+completion_date: ""
+repository: "http://github.com/lparsons/lamaya_tn5_demultiplex"
+hostname: ""
+documentation: "README.md"
